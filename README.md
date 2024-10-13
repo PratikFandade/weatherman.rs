@@ -2,6 +2,8 @@
 
 **Weather Station** is a command-line application written in Rust that provides real-time weather information for any city in the world. It uses the OpenWeatherMap API to fetch weather data and displays it in a user-friendly format with colored output.
 
+![Demo](./images/demo.png)
+
 ## Features ✨
 
 - Retrieve current weather conditions like temperature, humidity, pressure, and wind speed.
