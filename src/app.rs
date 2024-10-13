@@ -4,7 +4,7 @@ use std::env;
 use dotenv::dotenv;
 use ratatui::style::Color;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Default, Debug)]
 pub struct WeatherResponse {
     weather: Vec<Weather>,
     main: Main,
@@ -17,14 +17,14 @@ pub struct Weather {
     description: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Default, Debug)]
 pub struct Main {
     temp: f32,
     humidity: f32,
     pressure: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Default, Debug)]
 pub struct Wind {
     speed: f32,
 }
@@ -105,9 +105,10 @@ fn get_temp_emoji(temperature: f32) -> &'static str{
 pub struct App {
     pub country_input: String,
     pub city_input: String,
-    pub pairs: HashMap<String, String>,
-    pub weather: HashMap<String, WeatherResponse>,
-    pub color: HashMap<String, Color>,
+    pub countries: Vec<String>,
+    pub cities: Vec<String>,
+    pub weather: Vec<WeatherResponse>,
+    pub color: Vec<Color>,
     pub current_screen: CurrentScreen,
     pub currently_editing: Option<CurrentlyEditing>,
 }
@@ -117,9 +118,10 @@ impl App {
         App {
             country_input: String::new(),
             city_input: String::new(),
-            pairs: HashMap::new(),
-            weather: HashMap::new(),
-            color: HashMap::new(),
+            countries: Vec::new(),
+            cities: Vec::new(),
+            weather: Vec::new(),
+            color: Vec::new(),
             current_screen: CurrentScreen::Main,
             currently_editing: None,
         }
@@ -132,14 +134,17 @@ impl App {
         let country_code: &str = self.country_input.trim();
         let api_key: &str = &env::var("OPENWEATHER_API_KEY").expect("OPENWEATHER_API_KEY must be set");
 
-        self.pairs.insert(self.country_input.clone(), self.city_input.clone());
+        self.countries.push(self.country_input.clone());
+        self.cities.push(self.city_input.clone());
         let weather_info = get_weather_info(&city, &country_code, api_key);
         match weather_info {
             Ok(response) => {
-                self.color.insert(self.country_input.clone(), get_weather_text_colour(response.weather[0].description.clone()));
-                self.weather.insert(self.country_input.clone(), response);
+                self.color.push(get_weather_text_colour(response.weather[0].description.clone()));
+                self.weather.push(response);
             }
             Err(err) => {
+                self.color.push(Color::Red);
+                self.weather.push(WeatherResponse::default());
                 eprintln!("Error: {}", err);
             }
         }
@@ -161,8 +166,6 @@ impl App {
     }
 
     pub fn print_json(&self) -> serde_json::Result<()> {
-        let output = serde_json::to_string(&self.pairs)?;
-        println!("{}", output);
         Ok(())
     }
 }

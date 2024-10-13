@@ -37,20 +37,20 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
         .split(chunks[1]);
 
-    for key in app.pairs.keys() {
+    for (i, row) in app.countries.iter().enumerate() {
         list_items.push(ListItem::new(Line::from(Span::styled(
-            format!("{} : {}", key, app.pairs.get(key).unwrap()),
+            format!("{}, {}", app.cities[i], app.countries[i]),
             Style::default().fg(Color::Yellow),
         ))));
     }
 
 
-    for key in app.weather.keys() {
-        if let Some(weather) = app.weather.get(key) {
+    for (i, row) in app.countries.iter().enumerate() {
+        if let Some(weather) = app.weather.get(i) {
             let weather_info = display_weather_info(weather);
             main_list_items.push(ListItem::new(Line::from(Span::styled(
                 weather_info,
-                Style::default().fg(app.color.get(key).unwrap().clone()),
+                Style::default().fg(app.color[i]),
             ))));
         }
     }
