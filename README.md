@@ -24,3 +24,20 @@
    ```bash
    git clone https://github.com/pratikfandade/weather-cli.git
    cd weather-station
+   ```
+
+2. Add add the `OPENWEATHERMAP_API_KEY` in the file named `.env` to your project root:
+
+  ```bash
+  cat .env.example | sed 's/OPENWEATHERMAP_API_KEY=changeme/OPENWEATHERMAP_API_KEY=YOUR_API_KEY/g' > .env
+  ```
+
+3. Run the program:
+
+  ```bash
+  cargo run
+  ```
+
+## Contributing 🌱
+
+If you have any suggestions or find any bugs, please [open an issue](https://github.com/pratikfandade/weather-cli/issues). I'll be happy to help!
