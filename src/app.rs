@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-use serde::Deserialize;
 use std::env;
 use dotenv::dotenv;
 use ratatui::style::Color;
+use serde::Deserialize;
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct WeatherResponse {
     weather: Vec<Weather>,
     main: Main,
@@ -17,16 +16,53 @@ pub struct Weather {
     description: String,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Main {
     temp: f32,
     humidity: f32,
     pressure: f32,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Wind {
     speed: f32,
+}
+
+impl Default for WeatherResponse {
+    fn default() -> Self {
+        Self {
+            weather: vec![Weather::default()],
+            main: Main::default(),
+            wind: Wind::default(),
+            name: String::new(),
+        }
+    }
+}
+
+impl Default for Weather {
+    fn default() -> Self {
+        Self {
+            description: String::from("ERR: Check the input again"),
+        }
+    }
+}
+
+impl Default for Main {
+    fn default() -> Self {
+        Self {
+            temp: 0.0,
+            humidity: 0.0,
+            pressure: 0.0,
+        }
+    }
+}
+
+impl Default for Wind {
+    fn default() -> Self {
+        Self {
+            speed: 0.0,
+        }
+    }
 }
 
 pub enum CurrentScreen {
@@ -43,14 +79,11 @@ pub enum CurrentlyEditing {
 fn get_weather_info(city: &str, country_code: &str, api_key: &str) -> Result<WeatherResponse, reqwest::Error> {
     let url = format!(
         "http://api.openweathermap.org/data/2.5/weather?q={},{}&units=metric&appid={}",
-        city,
-        country_code,
-        api_key
+        city, country_code, api_key
     );
 
     let response = reqwest::blocking::get(&url)?;
-    let response_json: WeatherResponse = response.json::<WeatherResponse>()?;
-    Ok(response_json)
+    response.json::<WeatherResponse>()
 }
 
 pub fn display_weather_info(weather: &WeatherResponse) -> String {
@@ -62,9 +95,9 @@ pub fn display_weather_info(weather: &WeatherResponse) -> String {
 
     format!(
         "Weather in {}: {} {}
-        > Temperature: {:.1}°C,
-        > Humidity: {:.1}%,
-        > Pressure: {:.1} hPa,
+        > Temperature: {:.1}°C
+        > Humidity: {:.1}%
+        > Pressure: {:.1} hPa
         > Wind Speed: {:.1} m/s",
         weather.name,
         description,
@@ -76,29 +109,23 @@ pub fn display_weather_info(weather: &WeatherResponse) -> String {
     )
 }
 
-fn get_weather_text_colour(description: String) -> Color {
-    let color = match description.as_str() {
+fn get_weather_text_color(description: &str) -> Color {
+    match description {
         "clear sky" => Color::Blue,
         "few clouds" | "scattered clouds" | "broken clouds" => Color::Yellow,
-        "overcast clouds" | "mist" | "haze" | "smoke" | "sand" | "dust" | "fog" | "squalls" => Color::Green,
+        "overcast clouds" | "mist" | "haze" | "smoke" | "fog" => Color::Green,
         "shower rain" | "rain" | "thunderstorm" | "snow" => Color::Gray,
         _ => Color::White,
-    };
-
-    color
+    }
 }
 
-fn get_temp_emoji(temperature: f32) -> &'static str{
-    if temperature < 0.0 {
-        "🥶"
-    } else if temperature >= 0.0 && temperature < 15.0 {
-        "☁️"
-    } else if temperature >= 15.0 && temperature < 25.0 {
-        "⛅️"
-    } else if temperature >= 25.0 && temperature < 35.0 {
-        "🌤️"
-    } else {
-        "🔥"
+fn get_temp_emoji(temperature: f32) -> &'static str {
+    match temperature {
+        temp if temp < 0.0 => "🥶",
+        temp if temp >= 0.0 && temp < 15.0 => "☁️",
+        temp if temp >= 15.0 && temp < 25.0 => "⛅️",
+        temp if temp >= 25.0 && temp < 35.0 => "🌤️",
+        _ => "🔥",
     }
 }
 
@@ -108,20 +135,20 @@ pub struct App {
     pub countries: Vec<String>,
     pub cities: Vec<String>,
     pub weather: Vec<WeatherResponse>,
-    pub color: Vec<Color>,
+    pub colors: Vec<Color>,
     pub current_screen: CurrentScreen,
     pub currently_editing: Option<CurrentlyEditing>,
 }
 
 impl App {
-    pub fn new() -> App {
-        App {
+    pub fn new() -> Self {
+        Self {
             country_input: String::new(),
             city_input: String::new(),
-            countries: Vec::new(),
-            cities: Vec::new(),
-            weather: Vec::new(),
-            color: Vec::new(),
+            countries: Vec::with_capacity(10),
+            cities: Vec::with_capacity(10),
+            weather: Vec::with_capacity(10),
+            colors: Vec::with_capacity(10),
             current_screen: CurrentScreen::Main,
             currently_editing: None,
         }
@@ -130,39 +157,35 @@ impl App {
     pub fn save_country_city(&mut self) {
         dotenv().ok();
 
-        let city: &str = self.city_input.trim();
-        let country_code: &str = self.country_input.trim();
-        let api_key: &str = &env::var("OPENWEATHER_API_KEY").expect("OPENWEATHER_API_KEY must be set");
+        let city = self.city_input.trim();
+        let country_code = self.country_input.trim();
+        let api_key = env::var("OPENWEATHER_API_KEY").expect("OPENWEATHER_API_KEY must be set");
 
         self.countries.push(self.country_input.clone());
         self.cities.push(self.city_input.clone());
-        let weather_info = get_weather_info(&city, &country_code, api_key);
-        match weather_info {
+
+        match get_weather_info(city, country_code, &api_key) {
             Ok(response) => {
-                self.color.push(get_weather_text_colour(response.weather[0].description.clone()));
+                self.colors.push(get_weather_text_color(&response.weather[0].description));
                 self.weather.push(response);
             }
-            Err(err) => {
-                self.color.push(Color::Red);
+            Err(_err) => {
+                self.colors.push(Color::Red);
                 self.weather.push(WeatherResponse::default());
-                eprintln!("Error: {}", err);
             }
         }
 
-        self.country_input = String::new();
-        self.city_input = String::new();
+        self.country_input.clear();
+        self.city_input.clear();
         self.currently_editing = None;
     }
 
     pub fn toggle_editing(&mut self) {
-        if let Some(edit_mode) = &self.currently_editing {
-            match edit_mode {
-                CurrentlyEditing::Country => self.currently_editing = Some(CurrentlyEditing::City),
-                CurrentlyEditing::City => self.currently_editing = Some(CurrentlyEditing::Country),
-            };
-        } else {
-            self.currently_editing = Some(CurrentlyEditing::Country);
-        }
+        self.currently_editing = match self.currently_editing {
+            Some(CurrentlyEditing::Country) => Some(CurrentlyEditing::City),
+            Some(CurrentlyEditing::City) => Some(CurrentlyEditing::Country),
+            None => Some(CurrentlyEditing::Country),
+        };
     }
 
     pub fn print_json(&self) -> serde_json::Result<()> {

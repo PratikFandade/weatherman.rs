@@ -37,7 +37,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
         .constraints([Constraint::Percentage(20), Constraint::Percentage(80)])
         .split(chunks[1]);
 
-    for (i, row) in app.countries.iter().enumerate() {
+    for (i, _row) in app.countries.iter().enumerate() {
         list_items.push(ListItem::new(Line::from(Span::styled(
             format!("{}, {}", app.cities[i], app.countries[i]),
             Style::default().fg(Color::Yellow),
@@ -45,12 +45,12 @@ pub fn ui(frame: &mut Frame, app: &App) {
     }
 
 
-    for (i, row) in app.countries.iter().enumerate() {
+    for (i, _row) in app.countries.iter().enumerate() {
         if let Some(weather) = app.weather.get(i) {
             let weather_info = display_weather_info(weather);
             main_list_items.push(ListItem::new(Line::from(Span::styled(
                 weather_info,
-                Style::default().fg(app.color[i]),
+                Style::default().fg(app.colors[i]),
             ))));
         }
     }
@@ -93,7 +93,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let current_keys_hint = {
         match app.current_screen {
             CurrentScreen::Main => Span::styled(
-                "(q) to quit / (e) to make new pair",
+                "(q) to quit / (e) to get weather of new city",
                 Style::default().fg(Color::Red),
             ),
             CurrentScreen::Editing => Span::styled(
