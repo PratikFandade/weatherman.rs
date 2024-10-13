@@ -75,10 +75,10 @@ pub fn ui(frame: &mut Frame, app: &App) {
             if let Some(editing) = &app.currently_editing {
                 match editing {
                     CurrentlyEditing::Country => {
-                        Span::styled("Editing Json Key", Style::default().fg(Color::Green))
+                        Span::styled("Editing Country", Style::default().fg(Color::Green))
                     }
                     CurrentlyEditing::City => {
-                        Span::styled("Editing Json Value", Style::default().fg(Color::LightGreen))
+                        Span::styled("Editing City", Style::default().fg(Color::LightGreen))
                     }
                 }
             } else {
