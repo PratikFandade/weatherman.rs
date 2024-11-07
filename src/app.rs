@@ -1,7 +1,7 @@
-use std::env;
 use dotenv::dotenv;
 use ratatui::style::Color;
 use serde::Deserialize;
+use std::env;
 
 #[derive(Deserialize, Debug)]
 pub struct WeatherResponse {
@@ -26,6 +26,18 @@ pub struct Main {
 #[derive(Deserialize, Debug)]
 pub struct Wind {
     speed: f32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Country {
+    name: String,
+    iso2: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CountriesList {
+    countries: Vec<Country>,
+    selected: usize,
 }
 
 impl Default for WeatherResponse {
@@ -59,8 +71,27 @@ impl Default for Main {
 
 impl Default for Wind {
     fn default() -> Self {
+        Self { speed: 0.0 }
+    }
+}
+
+impl CountriesList {
+    fn new() -> Self {
         Self {
-            speed: 0.0,
+            countries: Vec::new(),
+            selected: 0,
+        }
+    }
+
+    fn next(&mut self) {
+        self.selected = (self.selected + 1) % self.countries.len();
+    }
+
+    fn previous(&mut self) {
+        if self.selected > 0 {
+            self.selected -= 1;
+        } else {
+            self.selected = self.countries.len() - 1;
         }
     }
 }
@@ -76,7 +107,11 @@ pub enum CurrentlyEditing {
     City,
 }
 
-fn get_weather_info(city: &str, country_code: &str, api_key: &str) -> Result<WeatherResponse, reqwest::Error> {
+fn get_weather_info(
+    city: &str,
+    country_code: &str,
+    api_key: &str,
+) -> Result<WeatherResponse, reqwest::Error> {
     let url = format!(
         "http://api.openweathermap.org/data/2.5/weather?q={},{}&units=metric&appid={}",
         city, country_code, api_key
@@ -84,6 +119,13 @@ fn get_weather_info(city: &str, country_code: &str, api_key: &str) -> Result<Wea
 
     let response = reqwest::blocking::get(&url)?;
     response.json::<WeatherResponse>()
+}
+
+pub fn get_countries_list() -> Result<CountriesList, reqwest::Error> {
+    let url = format!("https://api.countrystatecity.in/v1/countries");
+
+    let response = reqwest::blocking::get(&url)?;
+    response.json::<CountriesList>()
 }
 
 pub fn display_weather_info(weather: &WeatherResponse) -> String {
@@ -133,7 +175,11 @@ pub struct App {
     pub country_input: String,
     pub city_input: String,
     pub countries: Vec<String>,
+    pub countries_list: Vec<String>,
+    pub selected_country: usize,
     pub cities: Vec<String>,
+    pub cities_list: Vec<String>,
+    pub selected_city: usize,
     pub weather: Vec<WeatherResponse>,
     pub colors: Vec<Color>,
     pub current_screen: CurrentScreen,
@@ -146,12 +192,54 @@ impl App {
             country_input: String::new(),
             city_input: String::new(),
             countries: Vec::with_capacity(10),
+            countries_list: vec!["US".to_string(), "GB".to_string(), "IN".to_string()],
+            selected_country: 0,
             cities: Vec::with_capacity(10),
+            cities_list: vec![
+                "Buffalo".to_string(),
+                "Boston".to_string(),
+                "New York".to_string(),
+                "Nagpur".to_string(),
+                "Pune".to_string(),
+            ],
+            selected_city: 0,
             weather: Vec::with_capacity(10),
             colors: Vec::with_capacity(10),
             current_screen: CurrentScreen::Main,
             currently_editing: None,
         }
+    }
+
+    pub fn next_country(&mut self) {
+        self.selected_country = (self.selected_country + 1) % self.countries_list.len();
+    }
+
+    pub fn previous_country(&mut self) {
+        if self.selected_country == 0 {
+            self.selected_country = self.countries_list.len() - 1;
+        } else {
+            self.selected_country -= 1;
+        }
+    }
+
+    pub fn next_city(&mut self) {
+        self.selected_city = (self.selected_city + 1) % self.cities_list.len();
+    }
+
+    pub fn previous_city(&mut self) {
+        if self.selected_city == 0 {
+            self.selected_city = self.cities_list.len() - 1;
+        } else {
+            self.selected_city -= 1;
+        }
+    }
+
+    pub fn save_country(&mut self) {
+        self.country_input = self.countries_list[self.selected_country].clone();
+    }
+
+    pub fn save_city(&mut self) {
+        self.city_input = self.cities_list[self.selected_city].clone();
     }
 
     pub fn save_country_city(&mut self) {
@@ -166,7 +254,8 @@ impl App {
 
         match get_weather_info(city, country_code, &api_key) {
             Ok(response) => {
-                self.colors.push(get_weather_text_color(&response.weather[0].description));
+                self.colors
+                    .push(get_weather_text_color(&response.weather[0].description));
                 self.weather.push(response);
             }
             Err(_err) => {

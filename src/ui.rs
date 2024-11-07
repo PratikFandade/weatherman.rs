@@ -1,12 +1,12 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
-use crate::app::{App, CurrentScreen, CurrentlyEditing, display_weather_info};
+use crate::app::{display_weather_info, App, CurrentScreen, CurrentlyEditing};
 
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -43,7 +43,6 @@ pub fn ui(frame: &mut Frame, app: &App) {
             Style::default().fg(Color::Yellow),
         ))));
     }
-
 
     for (i, _row) in app.countries.iter().enumerate() {
         if let Some(weather) = app.weather.get(i) {
@@ -118,7 +117,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     frame.render_widget(mode_footer, footer_chunks[0]);
     frame.render_widget(key_notes_footer, footer_chunks[1]);
 
-    if let Some(editing) = &app.currently_editing {
+    if let Some(_) = &app.currently_editing {
         let popup_block = Block::default()
             .title("Enter a new Country and City pair")
             .borders(Borders::NONE)
@@ -133,21 +132,47 @@ pub fn ui(frame: &mut Frame, app: &App) {
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(area);
 
-        let mut country_block = Block::default().title("Country_Code").borders(Borders::ALL);
-        let mut city_block = Block::default().title("City").borders(Borders::ALL);
+        let countries_list: Vec<ListItem> = app
+            .countries_list
+            .iter()
+            .enumerate()
+            .map(|(i, &ref country)| {
+                let content = if i == app.selected_country {
+                    Span::styled(
+                        country,
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    Span::raw(country)
+                };
+                ListItem::new(Line::from(content))
+            })
+            .collect();
+        let list = List::new(countries_list).block(Block::default());
+        frame.render_widget(list, popup_chunks[0]);
 
-        let active_style = Style::default().bg(Color::LightYellow).fg(Color::Black);
-
-        match editing {
-            CurrentlyEditing::Country => country_block = country_block.style(active_style),
-            CurrentlyEditing::City => city_block = city_block.style(active_style),
-        };
-
-        let country_text = Paragraph::new(app.country_input.clone()).block(country_block);
-        frame.render_widget(country_text, popup_chunks[0]);
-
-        let city_text = Paragraph::new(app.city_input.clone()).block(city_block);
-        frame.render_widget(city_text, popup_chunks[1]);
+        let cities_list: Vec<ListItem> = app
+            .cities_list
+            .iter()
+            .enumerate()
+            .map(|(i, &ref city)| {
+                let content = if i == app.selected_city {
+                    Span::styled(
+                        city,
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    )
+                } else {
+                    Span::raw(city)
+                };
+                ListItem::new(Line::from(content))
+            })
+            .collect();
+        let cities_list = List::new(cities_list).block(Block::default());
+        frame.render_widget(cities_list, popup_chunks[1]);
     }
 
     if let CurrentScreen::Exiting = app.current_screen {
